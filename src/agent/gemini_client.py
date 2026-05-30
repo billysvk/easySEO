@@ -20,6 +20,7 @@ from src.skills.info_reader import InfoReader
 from src.skills.file_writer import FileWriter
 from src.skills.thumbnail_strategist import ThumbnailStrategist
 from src.skills.prompt_builder import PromptBuilder
+from src.skills.subtitle_downloader import SubtitleDownloader
 
 
 class EasySEOAgent:
@@ -36,8 +37,9 @@ class EasySEOAgent:
         self.file_writer = FileWriter()
         self.thumbnail_strategist = ThumbnailStrategist()
         self.prompt_builder = PromptBuilder()
+        self.subtitle_downloader = SubtitleDownloader()
 
-    def run(
+    async def run(
         self,
         folder_name: str,
         reference_url: str = None,
@@ -56,6 +58,10 @@ class EasySEOAgent:
         title = info_dict.get("title", "")
         description = info_dict.get("description", "")
         video_url = info_dict.get("url", "")
+
+        # Automatically download subtitles if missing
+        if video_url:
+            await self.subtitle_downloader.download_subtitles(folder_name, video_url)
 
         # Scrape data from video URL if it exists
         scraped_metadata = None

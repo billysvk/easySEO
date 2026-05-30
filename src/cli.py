@@ -1,5 +1,6 @@
 import argparse
 import sys
+import asyncio
 # Importing settings hardens stdout/stderr to UTF-8 (errors="replace") at import
 # time, before any non-ASCII log line can crash the run on Windows consoles.
 import config.settings  # noqa: F401
@@ -38,11 +39,13 @@ def main():
 
     agent = EasySEOAgent()
     try:
-        agent.run(
-            folder_name=args.folder,
-            reference_url=args.url,
-            no_visual=args.no_visual,
-            model_override=args.model,
+        asyncio.run(
+            agent.run(
+                folder_name=args.folder,
+                reference_url=args.url,
+                no_visual=args.no_visual,
+                model_override=args.model,
+            )
         )
         print("[+] Optimization task completed successfully!")
     except Exception as e:
