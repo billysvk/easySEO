@@ -1,3 +1,5 @@
+import re
+import json
 import httpx
 from bs4 import BeautifulSoup
 
@@ -21,7 +23,8 @@ class URLAnalyzer:
         try:
             headers = {
                 "User-Agent": (
-                    "Mozilla/5.0 (compatible; easySEO-Agent/1.0; YouTube SEO CLI)"
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                    "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
                 )
             }
             response = httpx.get(url, headers=headers, timeout=15.0, follow_redirects=True)
@@ -71,6 +74,74 @@ class URLAnalyzer:
             return "\n".join(parts)
         except Exception as e:
             return f"Failed to fetch or parse reference URL ({url}): {e}"
+
+    def scrape_video_metadata(self, url: str) -> dict:
+        """
+        Fetches and extracts metadata (title, description) from a video URL.
+        For YouTube videos, it parses ytInitialPlayerResponse to retrieve the
+        complete, multi-line video description. Otherwise, it falls back to
+        Open Graph and meta tags.
+        """
+        print(f"[*] [Skill: URLAnalyzer] Scraping video metadata from URL: {url}")
+        try:
+            headers = {
+                "User-Agent": (
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                    "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                ),
+                "Accept-Language": "el,en-US;q=0.9,en;q=0.8"
+            }
+            response = httpx.get(url, headers=headers, timeout=15.0, follow_redirects=True)
+            response.raise_for_status()
+
+            og_title = ""
+            og_desc = ""
+
+            # Check if this is a YouTube URL
+            is_youtube = "youtube.com" in url or "youtu.be" in url
+
+            if is_youtube:
+                # Attempt to extract full description and title from YouTube's player response JSON
+                match = re.search(r'ytInitialPlayerResponse\s*=\s*({.+?});', response.text)
+                if not match:
+                    match = re.search(r'ytInitialPlayerResponse\s*=\s*({.+?})\s*;</script>', response.text)
+                if not match:
+                    match = re.search(r'ytInitialPlayerResponse\s*=\s*(\{.*?\});', response.text, re.DOTALL)
+                
+                if match:
+                    try:
+                        player_data = json.loads(match.group(1))
+                        og_desc = player_data.get("videoDetails", {}).get("shortDescription", "")
+                        og_title = player_data.get("videoDetails", {}).get("title", "")
+                        print("[+] [Skill: URLAnalyzer] Extracted full description and title from YouTube player response.")
+                    except Exception as json_err:
+                        print(f"[*] [Skill: URLAnalyzer] Could not parse ytInitialPlayerResponse JSON: {json_err}")
+
+            # Fallback to BeautifulSoup if YouTube JSON extraction failed or for non-YouTube URLs
+            if not og_title or not og_desc:
+                soup = BeautifulSoup(response.text, "html.parser")
+                if not og_title:
+                    og_title = self._meta(soup, prop="og:title") or self._meta(soup, name="title")
+                if not og_desc:
+                    og_desc = self._meta(soup, prop="og:description") or self._meta(soup, name="description")
+                
+                # Ultimate fallback for title
+                if not og_title and soup.title:
+                    og_title = soup.title.string.strip() if soup.title.string else ""
+
+            return {
+                "title": og_title.strip() if og_title else "",
+                "description": og_desc.strip() if og_desc else "",
+                "success": True
+            }
+        except Exception as e:
+            print(f"[-] [Skill: URLAnalyzer] Error scraping video metadata: {e}")
+            return {
+                "title": "",
+                "description": "",
+                "success": False,
+                "error": str(e)
+            }
 
     @staticmethod
     def _meta(soup: BeautifulSoup, name: str = None, prop: str = None) -> str:

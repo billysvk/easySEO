@@ -11,6 +11,7 @@ from config.settings import (
     OLLAMA_MODEL,
     OLLAMA_NUM_CTX,
     LLM_TEMPERATURE,
+    RAW_INPUTS_DIR,
 )
 from src.skills.image_processor import ImageProcessor
 from src.skills.srt_parser import SRTParser
@@ -50,8 +51,59 @@ class EasySEOAgent:
         print(f"[*] Starting SEO Agent workflow for folder: '{folder_name}'...")
         print(f"[*] Active AI Provider: '{AI_PROVIDER.upper()}'")
 
-        # 1. Read existing title/description info.txt
-        info_data = self.info_reader.read_info(folder_name)
+        # 1. Read existing title/description/url from metadata file
+        info_dict = self.info_reader.read_info(folder_name)
+        title = info_dict.get("title", "")
+        description = info_dict.get("description", "")
+        video_url = info_dict.get("url", "")
+
+        # Scrape data from video URL if it exists
+        scraped_metadata = None
+        if video_url:
+            print(f"[*] Found original Video URL in metadata: {video_url}. Initiating data scraping...")
+            scraped_metadata = self.url_analyzer.scrape_video_metadata(video_url)
+            if scraped_metadata.get("success"):
+                # Save scraped metadata to a second markdown file inside the same folder
+                scraped_file_path = RAW_INPUTS_DIR / folder_name / "scraped_metadata.md"
+                print(f"[*] [Orchestrator] Saving scraped metadata to: {scraped_file_path}")
+                try:
+                    scraped_content = f"""# Scraped Video Metadata
+
+**URL:** {video_url}
+**Title:** {scraped_metadata.get('title')}
+
+**Description:**
+{scraped_metadata.get('description')}
+"""
+                    with open(scraped_file_path, "w", encoding="utf-8") as f:
+                        f.write(scraped_content)
+                    print(f"[+] [Orchestrator] Scraped metadata successfully saved to {scraped_file_path.name}")
+                except Exception as e:
+                    print(f"[-] [Orchestrator] Error saving scraped metadata file: {e}")
+
+                # Use scraped data as fallback if local metadata fields are empty
+                if not title and scraped_metadata.get("title"):
+                    title = scraped_metadata["title"]
+                    print(f"[+] [Orchestrator] Populated missing Title from scraped URL: '{title}'")
+                if not description and scraped_metadata.get("description"):
+                    description = scraped_metadata["description"]
+                    print("[+] [Orchestrator] Populated missing Description from scraped URL.")
+            else:
+                print(f"[!] [Orchestrator] Warning: Could not scrape live video URL: {scraped_metadata.get('error', 'unknown error')}")
+
+        # Construct final info text block to pass into the prompt
+        info_parts = []
+        if title:
+            info_parts.append(f"Title Draft: {title}")
+        if description:
+            info_parts.append(f"Description Draft:\n{description}")
+        if video_url:
+            info_parts.append(f"Original Video URL: {video_url}")
+            if scraped_metadata and scraped_metadata.get("success"):
+                info_parts.append(f"Live Video Title (Scraped): {scraped_metadata.get('title')}")
+                info_parts.append(f"Live Video Description (Scraped):\n{scraped_metadata.get('description')}")
+        
+        info_text = "\n\n".join(info_parts) if info_parts else "Title Draft: None\nDescription Draft: None"
 
         # 2. Parse subtitles SRT/SBV -> clean text + timestamped timeline
         srt_result = self.srt_parser.parse(folder_name)
@@ -86,7 +138,7 @@ class EasySEOAgent:
         # Build the expert prompt from .gemini.md (single source of truth).
         system_instruction = self.prompt_builder.get_system_instruction()
         prompt = self.prompt_builder.build_prompt(
-            info_text=info_data,
+            info_text=info_text,
             transcript_text=transcript_block,
             visual_data=visual_summary,
             reference_data=reference_data,
@@ -98,12 +150,12 @@ class EasySEOAgent:
         # --- LOCAL OLLAMA PROVIDER PIPELINE ---
         if AI_PROVIDER == "ollama":
             print(f"[*] Calling local Ollama server at {OLLAMA_URL} using model '{OLLAMA_MODEL}'...")
-            proposal_content = self._call_ollama(prompt, system_instruction, visual_images, info_data)
+            proposal_content = self._call_ollama(prompt, system_instruction, visual_images, info_text)
 
         # --- REMOTE GEMINI PROVIDER PIPELINE ---
         else:
             proposal_content = self._call_gemini(
-                prompt, system_instruction, visual_images, info_data, model_override
+                prompt, system_instruction, visual_images, info_text, model_override
             )
 
         # Output file

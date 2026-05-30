@@ -10,20 +10,28 @@ class ImageProcessor:
 
     def process_charts(self, folder_name: str) -> list:
         """
-        Loads images (screenshots, charts) from workspace/raw_inputs/{folder_name}
-        and returns a list of dictionaries with raw bytes, base64 strings, and Gemini Part objects.
+        Loads images (screenshots, charts) from workspace/raw_inputs/{folder_name}/statistics
+        if it exists, otherwise falls back to workspace/raw_inputs/{folder_name}.
         """
         folder_path = RAW_INPUTS_DIR / folder_name
-        print(f"[*] [Skill: ImageProcessor] Scanning for visual assets in: {folder_path}")
         
-        if not folder_path.exists():
-            print(f"[!] [Skill: ImageProcessor] Folder not found: {folder_path}")
+        # Check if the statistics folder exists inside the video folder
+        stats_path = folder_path / "statistics"
+        if stats_path.exists() and stats_path.is_dir():
+            search_path = stats_path
+            print(f"[*] [Skill: ImageProcessor] Scanning for visual assets in statistics subfolder: {search_path}")
+        else:
+            search_path = folder_path
+            print(f"[*] [Skill: ImageProcessor] Scanning for visual assets in root folder: {search_path}")
+            
+        if not search_path.exists():
+            print(f"[!] [Skill: ImageProcessor] Folder not found: {search_path}")
             return []
             
         supported_exts = {".png", ".jpg", ".jpeg"}
         processed_images = []
         
-        for file in folder_path.iterdir():
+        for file in search_path.iterdir():
             if file.suffix.lower() in supported_exts:
                 print(f"[+] [Skill: ImageProcessor] Loading image: {file.name}")
                 try:
