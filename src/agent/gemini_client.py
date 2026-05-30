@@ -6,6 +6,7 @@ from src.skills.srt_parser import SRTParser
 from src.skills.url_analyzer import URLAnalyzer
 from src.skills.info_reader import InfoReader
 from src.skills.file_writer import FileWriter
+from src.skills.thumbnail_strategist import ThumbnailStrategist
 
 class EasySEOAgent:
     def __init__(self):
@@ -19,6 +20,7 @@ class EasySEOAgent:
         self.url_analyzer = URLAnalyzer()
         self.info_reader = InfoReader()
         self.file_writer = FileWriter()
+        self.thumbnail_strategist = ThumbnailStrategist()
 
     def run(self, folder_name: str, reference_url: str = None) -> None:
         """
@@ -39,6 +41,9 @@ class EasySEOAgent:
         reference_data = ""
         if reference_url:
             reference_data = self.url_analyzer.analyze_url(reference_url)
+            
+        # 5. Load thumbnail visual strategist guides
+        thumbnail_guides = self.thumbnail_strategist.get_strategy_placeholder()
             
         print("[*] Consolidating inputs & constructing multimodal payload for Gemini...")
         
@@ -62,10 +67,14 @@ Analyze the following inputs for the YouTube video:
 4. External Reference Materials:
 {reference_data}
 
+5. Thumbnail Strategy Guidelines to follow:
+{thumbnail_guides}
+
 Please generate an SEO Proposal containing:
 - 3 high-CTR title variations (matching modern 2026 YouTube algorithm trends)
 - A compelling, chapter-based description structure
 - Relevant tags, key highlights, and visual hook suggestions.
+- A highly detailed Thumbnail Blueprint: Including visual layout guidelines, exact 3-word text overlays, and 2 ready-to-use image generator prompts (e.g., Midjourney).
 """
 
         proposal_content = ""
