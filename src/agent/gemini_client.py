@@ -29,7 +29,7 @@ class EasySEOAgent:
         self.file_writer = FileWriter()
         self.thumbnail_strategist = ThumbnailStrategist()
 
-    def run(self, folder_name: str, reference_url: str = None) -> None:
+    def run(self, folder_name: str, reference_url: str = None, no_visual: bool = False) -> None:
         """
         Orchestrates skills to generate a comprehensive SEO Proposal.
         Supports both remote Gemini and local Ollama pipelines.
@@ -44,7 +44,11 @@ class EasySEOAgent:
         srt_data = self.srt_parser.parse_srt(folder_name)
         
         # 3. Process visual/retention charts (returns structured lists with parts & base64)
-        visual_images = self.image_processor.process_charts(folder_name)
+        visual_images = []
+        if not no_visual:
+            visual_images = self.image_processor.process_charts(folder_name)
+        else:
+            print("[*] Skipping visual image analysis (--no-visual flag active).")
         
         # 4. Fetch/parse reference URL if provided
         reference_data = ""
@@ -58,7 +62,7 @@ class EasySEOAgent:
         
         visual_summary = (
             f"Attached {len(visual_images)} YouTube Studio analytics screenshots / retention charts." 
-            if visual_images else "No visual analytics screenshots provided."
+            if visual_images else "No visual analytics screenshots provided (Text-only analysis)."
         )
         
         # Construct dynamic prompt

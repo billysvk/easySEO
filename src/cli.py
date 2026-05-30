@@ -5,7 +5,7 @@ from src.agent.gemini_client import EasySEOAgent
 
 def main():
     parser = argparse.ArgumentParser(
-        description="easySEO: Automated YouTube Video Optimization CLI using Gemini"
+        description="easySEO: Automated YouTube Video Optimization CLI using Gemini/Ollama"
     )
     parser.add_argument(
         "--folder",
@@ -18,6 +18,11 @@ def main():
         type=str,
         help="Optional external reference URL to fetch and analyze"
     )
+    parser.add_argument(
+        "--no-visual",
+        action="store_true",
+        help="Skip visual image assets analysis (multimodal processing) for faster text-only inference"
+    )
 
     args = parser.parse_args()
 
@@ -25,7 +30,7 @@ def main():
     
     agent = EasySEOAgent()
     try:
-        agent.run(folder_name=args.folder, reference_url=args.url)
+        agent.run(folder_name=args.folder, reference_url=args.url, no_visual=args.no_visual)
         print("[+] Optimization task completed successfully!")
     except Exception as e:
         print(f"[-] Error executing agent: {e}", file=sys.stderr)
