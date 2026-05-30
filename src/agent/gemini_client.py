@@ -10,7 +10,6 @@ from src.skills.file_writer import FileWriter
 class EasySEOAgent:
     def __init__(self):
         # Initialize the official Gemini SDK client
-        # In 2026/latest SDK, client is instantiated via genai.Client()
         self.api_key = GEMINI_API_KEY or os.environ.get("GEMINI_API_KEY", "")
         self.client = genai.Client(api_key=self.api_key) if self.api_key else None
         
@@ -33,15 +32,20 @@ class EasySEOAgent:
         # 2. Parse subtitles SRT
         srt_data = self.srt_parser.parse_srt(folder_name)
         
-        # 3. Process visual/retention charts (images)
-        visual_data = self.image_processor.process_charts(folder_name)
+        # 3. Process visual/retention charts (images loaded as types.Part)
+        visual_parts = self.image_processor.process_charts(folder_name)
         
         # 4. Fetch/parse reference URL if provided
         reference_data = ""
         if reference_url:
             reference_data = self.url_analyzer.analyze_url(reference_url)
             
-        print("[*] Consolidating inputs & constructing prompt for Gemini...")
+        print("[*] Consolidating inputs & constructing multimodal payload for Gemini...")
+        
+        visual_summary = (
+            f"Attached {len(visual_parts)} YouTube Studio analytics screenshots / retention charts." 
+            if visual_parts else "No visual analytics screenshots provided."
+        )
         
         # Construct dynamic prompt
         prompt = f"""
@@ -53,7 +57,7 @@ Analyze the following inputs for the YouTube video:
 {srt_data}
 
 3. Key Visual/Retention Data:
-{visual_data}
+{visual_summary}
 
 4. External Reference Materials:
 {reference_data}
@@ -66,11 +70,14 @@ Please generate an SEO Proposal containing:
 
         proposal_content = ""
         if self.client:
-            print(f"[*] Calling Gemini Model '{DEFAULT_MODEL}'...")
+            print(f"[*] Calling Gemini Model '{DEFAULT_MODEL}' with multimodal inputs...")
             try:
+                # Compile contents list: text prompt + loaded image parts
+                contents = [prompt] + visual_parts
+                
                 response = self.client.models.generate_content(
                     model=DEFAULT_MODEL,
-                    contents=prompt,
+                    contents=contents,
                 )
                 proposal_content = response.text
             except Exception as e:
@@ -82,7 +89,7 @@ Please generate an SEO Proposal containing:
 
         # 5. Output file
         self.file_writer.write_proposal(folder_name, proposal_content)
-        print("[+] Execution finished!")
+        print("[+] Execution finished successfully!")
 
     def _get_fallback_proposal(self, info_data: str, prompt_used: str) -> str:
         return f"""# SEO Proposal (Mocked - API Key not set or failed)
