@@ -35,7 +35,8 @@ easy_seo/
 │       ├── url_analyzer.py     # Scrapes external articles or competitor content using HTTPX/BS4
 │       ├── info_reader.py      # Ingests current titles/descriptions from info.txt
 │       ├── file_writer.py      # Formats and saves the final SEO_PROPOSAL.md
-│       └── thumbnail_strategist.py # Generates overlay layout strategies and detailed AI generator prompts
+│       ├── thumbnail_strategist.py # Generates overlay layout strategies and detailed AI generator prompts
+│       └── prompt_builder.py   # Loads the expert persona + output blueprint from .gemini.md
 │
 └── workspace/
     ├── raw_inputs/             # Folder for placing raw video assets (directories per video)
@@ -50,10 +51,10 @@ easy_seo/
 Unlike traditional text-only tools, `easySEO` reads actual binary image assets (screenshots of **YouTube Studio Analytics** and **Audience Retention Curves**). It loads these files and automatically maps them to **Gemini API Multimodal Parts**, allowing the AI to physically analyze spikes, flatlines, or sudden intro drop-offs.
 
 ### 2. Video Transcript Understanding (`SRTParser`)
-It ingests standard `.srt` subtitle files, sanitizes timing headers, and outputs clean speech text. The AI uses this data to map the video's actual semantic value, extract timestamps, and align titles/descriptions with spoken keywords for semantic indexing.
+It ingests standard `.srt` / `.sbv` subtitle files and produces **two** views: a sanitized clean-speech stream for keyword/semantic alignment, **and** a downsampled `[MM:SS]` timeline. The timeline lets the AI author *accurate, real* chapter timestamps instead of guessing — a key requirement of the system blueprint.
 
 ### 3. URL Competitor Scraping (`URLAnalyzer`)
-Accepts an optional URL argument. It leverages `httpx` and `beautifulsoup4` to scrape competitor titles, tags, and articles, cross-referencing industry standards directly to enhance descriptions.
+Accepts an optional URL argument. It leverages `httpx` and `beautifulsoup4` to extract competitor **title, meta description, Open Graph tags (`og:title`/`og:description`), keywords and H1/H2 headings** — not just raw paragraphs. This surfaces a competitor's actual packaging even on JS-heavy pages like YouTube watch URLs.
 
 ### 4. Creative Visual Director (`ThumbnailStrategist`)
 Instead of wasting compute attempting to render inaccurate images, this skill acts as a Creative Director. It defines the optimal layout composition (Rule of Thirds, focus subjects, color contrast) and provides **2 ready-to-use Midjourney/DALL-E prompts** to render high-CTR background images, complete with exact copy overlay recommendations.
@@ -76,15 +77,27 @@ Run the following command to automatically create a virtual environment and inst
 uv sync
 ```
 
-### 3. Configure Gemini API Key
-Export your official Gemini API Key to your environment variables:
-```bash
-# On Windows PowerShell
-$env:GEMINI_API_KEY="your-api-key-here"
+### 3. Configure the Provider
+Copy `.env.example` to `.env` and fill in your settings. easySEO supports two
+backends:
 
-# On Linux/macOS
-export GEMINI_API_KEY="your-api-key-here"
+**Option A — Gemini (remote, recommended for quality & vision):**
+```env
+AI_PROVIDER=gemini
+GEMINI_API_KEY=your-api-key-here
+GEMINI_MODEL=gemini-2.0-flash   # or gemini-2.5-pro for expert-grade output
+LLM_TEMPERATURE=0.7
 ```
+
+**Option B — Ollama (fully local, no API key):**
+```env
+AI_PROVIDER=ollama
+OLLAMA_MODEL=llama3.2:latest    # use a vision model (e.g. llava) for screenshots
+OLLAMA_NUM_CTX=16384            # raise for long transcripts so the prompt isn't truncated
+```
+
+> The expert SEO persona and the exact output structure live in **`.gemini.md`**
+> — edit that single file to tune the consultant's behavior for both providers.
 
 ---
 
@@ -104,6 +117,12 @@ uv run python -m src.cli --folder my_vlog
 
 # Run with an external reference URL for competitor mapping
 uv run python -m src.cli --folder my_vlog --url "https://competitor-article.com/video-topic"
+
+# Override the Gemini model for a single run (expert mode)
+uv run python -m src.cli --folder my_vlog --model gemini-2.5-pro
+
+# Text-only run (skip screenshot/multimodal analysis)
+uv run python -m src.cli --folder my_vlog --no-visual
 ```
 
 ### 3. Retrieve Proposal
