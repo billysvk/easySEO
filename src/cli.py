@@ -4,6 +4,12 @@ from pathlib import Path
 from src.agent.gemini_client import EasySEOAgent
 
 def main():
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+        sys.stderr.reconfigure(encoding='utf-8')
+    except AttributeError:
+        pass
+        
     parser = argparse.ArgumentParser(
         description="easySEO: Automated YouTube Video Optimization CLI using Gemini/Ollama"
     )

@@ -27,7 +27,10 @@ class URLAnalyzer:
             paragraphs = [p.get_text().strip() for p in soup.find_all("p")]
             clean_text = "\n".join([p for p in paragraphs if p])[:5000] # Cap text
             
-            print(f"[+] [Skill: URLAnalyzer] Successfully parsed URL title: '{title}'")
+            try:
+                print(f"[+] [Skill: URLAnalyzer] Successfully parsed URL title: '{title}'")
+            except UnicodeEncodeError:
+                print(f"[+] [Skill: URLAnalyzer] Successfully parsed URL title (contains non-ASCII characters)")
             return f"Source URL: {url}\nTitle: {title}\nContent Snippet:\n{clean_text}"
         except Exception as e:
             return f"Failed to fetch or parse reference URL ({url}): {e}"
