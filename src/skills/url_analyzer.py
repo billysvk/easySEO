@@ -8,12 +8,13 @@ class URLAnalyzer:
     def analyze_url(self, url: str) -> str:
         """
         Fetches the web URL and extracts main contents, headers, or metadata.
+        Automatically follows HTTP redirects.
         """
         print(f"[*] [Skill: URLAnalyzer] Fetching external reference URL: {url}")
         try:
-            # Using HTTPX client
+            # Using HTTPX client with follow_redirects=True
             headers = {"User-Agent": "easySEO-Agent/1.0 (YouTube SEO CLI)"}
-            response = httpx.get(url, headers=headers, timeout=10.0)
+            response = httpx.get(url, headers=headers, timeout=15.0, follow_redirects=True)
             response.raise_for_status()
             
             # Parsing HTML
