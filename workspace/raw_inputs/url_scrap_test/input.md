@@ -1,2 +1,2 @@
 url: https://youtu.be/EK-USSdQAr4
-keyword: turkey vlog
+keyword: turkey, vlog, ταξιδια, Τουρκία, Έλληνισμός, Έλληνες στην Τουρκία, Κωνσταντινούπολη, Τρίγλια, Ελληνικά χωριά, ταξιδιωτικό βίντεο, traveler, ΑρχαίαΕλλάδα, ΕλληνικήΙστορία, ΠαλιάΕλληνικήΠόλη, ΤαξίδιΣτηνΤουρκία, ΕλληνικέςΡίζες, ΙστορικάΜνημεία, ΕλλάδαΚαιΤουρκία, AncientGreece, GreekHistory, TravelTurkey, HistoryLovers, CulturalHeritage, TravelVlog, ExploreTheWorld, Greek vloger, Ελληνικά βίντεο, Ελληνικά vlog, Ταξίδια, Ελλάδα Τουρκία, παλιές πατρίδες, Προύσα, Bursa, Καραγκιόζης, Koza Han, travelTurkey, TurkeyVlog

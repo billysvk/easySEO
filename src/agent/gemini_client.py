@@ -112,20 +112,18 @@ class EasySEOAgent:
             print("[*] [Orchestrator] Focus keyword is missing. Initiating automatic keyword discovery...")
             discovered_keyword = ""
             
-            # Method A: Try using scraped tags/keywords list
+            # Method A: Try using scraped tags/keywords list and gather as many as possible
             if scraped_metadata and scraped_metadata.get("keywords"):
                 scraped_keywords = scraped_metadata["keywords"]
-                if len(scraped_keywords) >= 1:
-                    primary_tag = scraped_keywords[0].strip()
-                    # Clean up
-                    primary_tag = re.sub(r'[^\w\s]', '', primary_tag).strip()
-                    if primary_tag:
-                        if len(scraped_keywords) >= 2 and len(primary_tag) < 15:
-                            sec_tag = scraped_keywords[1].strip()
-                            sec_tag = re.sub(r'[^\w\s]', '', sec_tag).strip()
-                            discovered_keyword = f"{primary_tag} {sec_tag}"
-                        else:
-                            discovered_keyword = primary_tag
+                if scraped_keywords:
+                    cleaned_keywords = []
+                    for kw in scraped_keywords:
+                        kw_cleaned = kw.strip()
+                        if kw_cleaned and kw_cleaned not in cleaned_keywords:
+                            cleaned_keywords.append(kw_cleaned)
+                    
+                    if cleaned_keywords:
+                        discovered_keyword = ", ".join(cleaned_keywords)
             
             # Method B: Fallback to title parsing
             if not discovered_keyword and title:
@@ -196,8 +194,10 @@ class EasySEOAgent:
             reference_data_parts.append(ref_data)
         
         if keyword:
-            competitor_data = await self.competitor_analyzer.analyze_competitors(keyword)
-            reference_data_parts.append(f"--- COMPETITOR SEARCH & KEYWORD GAP ANALYSIS (Keyword: '{keyword}') ---\n{competitor_data}")
+            # Use the first keyword (before the first comma) for the search query to ensure high-relevance YouTube search results
+            search_query = keyword.split(",")[0].strip() if "," in keyword else keyword
+            competitor_data = await self.competitor_analyzer.analyze_competitors(search_query)
+            reference_data_parts.append(f"--- COMPETITOR SEARCH & KEYWORD GAP ANALYSIS (Keyword: '{search_query}') ---\n{competitor_data}")
             
         reference_data = "\n\n".join(reference_data_parts) if reference_data_parts else ""
 
@@ -249,62 +249,54 @@ class EasySEOAgent:
     # ------------------------------------------------------------------ #
     def _call_gemini(self, prompt, system_instruction, visual_images, info_data, model_override):
         if not self.client:
-            print("[!] No GEMINI_API_KEY found. Generating draft proposal using local rules.")
-            return self._get_fallback_proposal(info_data, prompt)
+            raise ValueError("GEMINI_API_KEY is not set or invalid. Cannot generate proposal without API Key.")
 
         model = model_override or DEFAULT_MODEL
         print(f"[*] Calling Gemini Model '{model}' with multimodal inputs...")
-        try:
-            gemini_parts = [img["part"] for img in visual_images]
-            contents = [prompt] + gemini_parts
+        
+        gemini_parts = [img["part"] for img in visual_images]
+        contents = [prompt] + gemini_parts
 
-            response = self.client.models.generate_content(
-                model=model,
-                contents=contents,
-                config=types.GenerateContentConfig(
-                    system_instruction=system_instruction,
-                    temperature=LLM_TEMPERATURE,
-                ),
-            )
-            return self._strip_reasoning(response.text)
-        except Exception as e:
-            print(f"[-] Gemini API call failed: {e}. Falling back to boilerplate text.")
-            return self._get_fallback_proposal(info_data, prompt)
+        response = self.client.models.generate_content(
+            model=model,
+            contents=contents,
+            config=types.GenerateContentConfig(
+                system_instruction=system_instruction,
+                temperature=LLM_TEMPERATURE,
+            ),
+        )
+        return self._strip_reasoning(response.text)
 
     def _call_ollama(self, prompt, system_instruction, visual_images, info_data):
-        try:
-            payload = {
-                "model": OLLAMA_MODEL,
-                "prompt": prompt,
-                "system": system_instruction,
-                "stream": False,
-                # Disable chain-of-thought for "thinking" models (qwen3, etc.)
-                # so <think> traces don't pollute the proposal.
-                "think": False,
-                "options": {
-                    "temperature": LLM_TEMPERATURE,
-                    # Critical: without this local models default to ~4k ctx and
-                    # silently drop the tail of a long expert prompt.
-                    "num_ctx": OLLAMA_NUM_CTX,
-                },
-            }
+        payload = {
+            "model": OLLAMA_MODEL,
+            "prompt": prompt,
+            "system": system_instruction,
+            "stream": False,
+            # Disable chain-of-thought for "thinking" models (qwen3, etc.)
+            # so <think> traces don't pollute the proposal.
+            "think": False,
+            "options": {
+                "temperature": LLM_TEMPERATURE,
+                # Critical: without this local models default to ~4k ctx and
+                # silently drop the tail of a long expert prompt.
+                "num_ctx": OLLAMA_NUM_CTX,
+            },
+        }
 
-            base64_images = [img["base64"] for img in visual_images]
-            if base64_images:
-                payload["images"] = base64_images
-                print(f"[*] Attaching {len(base64_images)} image(s) to local Ollama multimodal request...")
-                print("[!] Note: images are only analyzed if OLLAMA_MODEL is a vision model.")
+        base64_images = [img["base64"] for img in visual_images]
+        if base64_images:
+            payload["images"] = base64_images
+            print(f"[*] Attaching {len(base64_images)} image(s) to local Ollama multimodal request...")
+            print("[!] Note: images are only analyzed if OLLAMA_MODEL is a vision model.")
 
-            response = httpx.post(
-                f"{OLLAMA_URL}/api/generate",
-                json=payload,
-                timeout=600.0,  # Local inference of long prompts can be slow.
-            )
-            response.raise_for_status()
-            return self._strip_reasoning(response.json().get("response", ""))
-        except Exception as e:
-            print(f"[-] Local Ollama call failed: {e}. Falling back to boilerplate text.")
-            return self._get_fallback_proposal(info_data, prompt)
+        response = httpx.post(
+            f"{OLLAMA_URL}/api/generate",
+            json=payload,
+            timeout=600.0,  # Local inference of long prompts can be slow.
+        )
+        response.raise_for_status()
+        return self._strip_reasoning(response.json().get("response", ""))
 
     # ------------------------------------------------------------------ #
     # Helpers
