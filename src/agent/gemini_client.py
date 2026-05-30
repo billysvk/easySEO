@@ -107,6 +107,58 @@ class EasySEOAgent:
             else:
                 print(f"[!] [Orchestrator] Warning: Could not scrape live video URL: {scraped_metadata.get('error', 'unknown error')}")
 
+        # Automatically discover and save focus keyword if missing
+        if not keyword or not keyword.strip():
+            print("[*] [Orchestrator] Focus keyword is missing. Initiating automatic keyword discovery...")
+            discovered_keyword = ""
+            
+            # Method A: Try using scraped tags/keywords list
+            if scraped_metadata and scraped_metadata.get("keywords"):
+                scraped_keywords = scraped_metadata["keywords"]
+                if len(scraped_keywords) >= 1:
+                    primary_tag = scraped_keywords[0].strip()
+                    # Clean up
+                    primary_tag = re.sub(r'[^\w\s]', '', primary_tag).strip()
+                    if primary_tag:
+                        if len(scraped_keywords) >= 2 and len(primary_tag) < 15:
+                            sec_tag = scraped_keywords[1].strip()
+                            sec_tag = re.sub(r'[^\w\s]', '', sec_tag).strip()
+                            discovered_keyword = f"{primary_tag} {sec_tag}"
+                        else:
+                            discovered_keyword = primary_tag
+            
+            # Method B: Fallback to title parsing
+            if not discovered_keyword and title:
+                # Clean up title: remove emojis, hashtags
+                clean_title = re.sub(r'#\S+', '', title)
+                clean_title = re.sub(r'[^\w\s|:\-—]', '', clean_title)
+                
+                # Split by separators
+                parts = re.split(r'[|:\-—]', clean_title)
+                if parts:
+                    candidate = parts[0].strip()
+                    candidate = re.sub(r'\s+', ' ', candidate).strip()
+                    if candidate:
+                        title_lower = title.lower()
+                        if "travel" in title_lower or "vlog" in title_lower or "ταξίδι" in title_lower or "ταξιδι" in title_lower:
+                            discovered_keyword = f"{candidate} travel vlog"
+                        else:
+                            discovered_keyword = candidate
+                            
+            # Ultimate fallback
+            if not discovered_keyword:
+                discovered_keyword = "travel vlog"
+                
+            keyword = discovered_keyword.strip()
+            
+            # Save it back to input file
+            meta_file_path = RAW_INPUTS_DIR / folder_name / "input.md"
+            if not meta_file_path.exists():
+                if (RAW_INPUTS_DIR / folder_name / "info.txt").exists():
+                    meta_file_path = RAW_INPUTS_DIR / folder_name / "info.txt"
+            
+            self._update_keyword_in_file(meta_file_path, keyword)
+
         # Construct final info text block to pass into the prompt
         info_parts = []
         if title:
@@ -302,3 +354,25 @@ This proposal was generated as a mockup because no valid Gemini API key was prov
 {prompt_used}
 ```
 """
+
+    def _update_keyword_in_file(self, meta_file_path, new_keyword: str) -> None:
+        try:
+            content = ""
+            if meta_file_path.exists():
+                with open(meta_file_path, "r", encoding="utf-8") as f:
+                    content = f.read()
+            
+            # Check if keyword already exists in file
+            keyword_line_pattern = re.compile(r'^#*\s*\*?(?:focus\s*keyword|keyword)\*?\s*:\s*(.*)', re.IGNORECASE | re.MULTILINE)
+            if keyword_line_pattern.search(content):
+                # Replace it
+                updated_content = keyword_line_pattern.sub(f"keyword: {new_keyword}", content)
+            else:
+                # Append it
+                updated_content = content.rstrip() + f"\nkeyword: {new_keyword}\n"
+            
+            with open(meta_file_path, "w", encoding="utf-8") as f:
+                f.write(updated_content)
+            print(f"[+] [Orchestrator] Automatically filled and saved focus keyword to {meta_file_path.name}: '{new_keyword}'")
+        except Exception as e:
+            print(f"[-] [Orchestrator] Error updating keyword in metadata file: {e}")

@@ -96,6 +96,7 @@ class URLAnalyzer:
 
             og_title = ""
             og_desc = ""
+            keywords = []
 
             # Check if this is a YouTube URL
             is_youtube = "youtube.com" in url or "youtu.be" in url
@@ -110,7 +111,7 @@ class URLAnalyzer:
                 if not match:
                     match = re.search(r'ytInitialPlayerResponse\s*=\s*({.+?})\s*;</script>', response.text)
                 if not match:
-                    match = re.search(r'ytInitialPlayerResponse\s*=\s*(\{.*?\});', response.text, re.DOTALL)
+                    match = re.search(r'ytInitialPlayerResponse\s*=\s*\{.*?\});', response.text, re.DOTALL)
                 
                 if match:
                     try:
@@ -120,17 +121,23 @@ class URLAnalyzer:
                         views = player_data.get("videoDetails", {}).get("viewCount", "0")
                         author = player_data.get("videoDetails", {}).get("author", "")
                         publish_date = player_data.get("microformat", {}).get("playerMicroformatRenderer", {}).get("publishDate", "")
+                        keywords = player_data.get("videoDetails", {}).get("keywords", [])
                         print(f"[+] [Skill: URLAnalyzer] Extracted full description, title and public stats (Views: {views}) from YouTube player response.")
                     except Exception as json_err:
                         print(f"[*] [Skill: URLAnalyzer] Could not parse ytInitialPlayerResponse JSON: {json_err}")
 
             # Fallback to BeautifulSoup if YouTube JSON extraction failed or for non-YouTube URLs
-            if not og_title or not og_desc:
+            soup = None
+            if not og_title or not og_desc or not keywords:
                 soup = BeautifulSoup(response.text, "html.parser")
                 if not og_title:
                     og_title = self._meta(soup, prop="og:title") or self._meta(soup, name="title")
                 if not og_desc:
                     og_desc = self._meta(soup, prop="og:description") or self._meta(soup, name="description")
+                if not keywords:
+                    keywords_elem = soup.find("meta", {"name": "keywords"})
+                    if keywords_elem and keywords_elem.get("content"):
+                        keywords = [k.strip() for k in keywords_elem["content"].split(",")]
                 
                 # Ultimate fallback for title
                 if not og_title and soup.title:
@@ -142,6 +149,7 @@ class URLAnalyzer:
                 "views": views,
                 "author": author,
                 "publish_date": publish_date,
+                "keywords": keywords,
                 "success": True
             }
         except Exception as e:
@@ -152,6 +160,7 @@ class URLAnalyzer:
                 "views": "0",
                 "author": "",
                 "publish_date": "",
+                "keywords": [],
                 "success": False,
                 "error": str(e)
             }
