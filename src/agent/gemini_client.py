@@ -1,6 +1,13 @@
 import os
+import httpx
 from google import genai
-from config.settings import DEFAULT_MODEL, GEMINI_API_KEY
+from config.settings import (
+    DEFAULT_MODEL,
+    GEMINI_API_KEY,
+    AI_PROVIDER,
+    OLLAMA_URL,
+    OLLAMA_MODEL
+)
 from src.skills.image_processor import ImageProcessor
 from src.skills.srt_parser import SRTParser
 from src.skills.url_analyzer import URLAnalyzer
@@ -10,7 +17,7 @@ from src.skills.thumbnail_strategist import ThumbnailStrategist
 
 class EasySEOAgent:
     def __init__(self):
-        # Initialize the official Gemini SDK client
+        # Initialize Gemini SDK client (used if AI_PROVIDER is "gemini")
         self.api_key = GEMINI_API_KEY or os.environ.get("GEMINI_API_KEY", "")
         self.client = genai.Client(api_key=self.api_key) if self.api_key else None
         
@@ -24,18 +31,20 @@ class EasySEOAgent:
 
     def run(self, folder_name: str, reference_url: str = None) -> None:
         """
-        Orchestrates skills to generate a comprehensive SEO Proposal using Gemini.
+        Orchestrates skills to generate a comprehensive SEO Proposal.
+        Supports both remote Gemini and local Ollama pipelines.
         """
         print(f"[*] Starting SEO Agent workflow for folder: '{folder_name}'...")
+        print(f"[*] Active AI Provider: '{AI_PROVIDER.upper()}'")
         
         # 1. Read existing title/description info.txt
         info_data = self.info_reader.read_info(folder_name)
         
-        # 2. Parse subtitles SRT
+        # 2. Parse subtitles SRT/SBV
         srt_data = self.srt_parser.parse_srt(folder_name)
         
-        # 3. Process visual/retention charts (images loaded as types.Part)
-        visual_parts = self.image_processor.process_charts(folder_name)
+        # 3. Process visual/retention charts (returns structured lists with parts & base64)
+        visual_images = self.image_processor.process_charts(folder_name)
         
         # 4. Fetch/parse reference URL if provided
         reference_data = ""
@@ -45,11 +54,11 @@ class EasySEOAgent:
         # 5. Load thumbnail visual strategist guides
         thumbnail_guides = self.thumbnail_strategist.get_strategy_placeholder()
             
-        print("[*] Consolidating inputs & constructing multimodal payload for Gemini...")
+        print("[*] Consolidating inputs & constructing payload...")
         
         visual_summary = (
-            f"Attached {len(visual_parts)} YouTube Studio analytics screenshots / retention charts." 
-            if visual_parts else "No visual analytics screenshots provided."
+            f"Attached {len(visual_images)} YouTube Studio analytics screenshots / retention charts." 
+            if visual_images else "No visual analytics screenshots provided."
         )
         
         # Construct dynamic prompt
@@ -78,23 +87,57 @@ Please generate an SEO Proposal containing:
 """
 
         proposal_content = ""
-        if self.client:
-            print(f"[*] Calling Gemini Model '{DEFAULT_MODEL}' with multimodal inputs...")
+        
+        # --- LOCAL OLLAMA PROVIDER PIPELINE ---
+        if AI_PROVIDER == "ollama":
+            print(f"[*] Calling local Ollama server at {OLLAMA_URL} using model '{OLLAMA_MODEL}'...")
             try:
-                # Compile contents list: text prompt + loaded image parts
-                contents = [prompt] + visual_parts
+                # Compile base64 strings of visual images for Ollama multimodal support
+                base64_images = [img["base64"] for img in visual_images]
                 
-                response = self.client.models.generate_content(
-                    model=DEFAULT_MODEL,
-                    contents=contents,
+                # Payload matching Ollama's native API
+                payload = {
+                    "model": OLLAMA_MODEL,
+                    "prompt": prompt,
+                    "stream": False
+                }
+                if base64_images:
+                    payload["images"] = base64_images
+                    print(f"[*] Attaching {len(base64_images)} image(s) to local Ollama multimodal request...")
+                
+                # Make HTTP call to local daemon
+                response = httpx.post(
+                    f"{OLLAMA_URL}/api/generate",
+                    json=payload,
+                    timeout=90.0  # Local models can take a moment to compute
                 )
-                proposal_content = response.text
+                response.raise_for_status()
+                proposal_content = response.json().get("response", "")
+                
             except Exception as e:
-                print(f"[-] Gemini API call failed: {e}. Falling back to boilerplate text.")
+                print(f"[-] Local Ollama call failed: {e}. Falling back to boilerplate text.")
                 proposal_content = self._get_fallback_proposal(info_data, prompt)
+                
+        # --- REMOTE GEMINI PROVIDER PIPELINE ---
         else:
-            print("[!] No GEMINI_API_KEY found. Generating draft proposal using local rules.")
-            proposal_content = self._get_fallback_proposal(info_data, prompt)
+            if self.client:
+                print(f"[*] Calling Gemini Model '{DEFAULT_MODEL}' with multimodal inputs...")
+                try:
+                    # Extract Gemini Part objects from visual images
+                    gemini_parts = [img["part"] for img in visual_images]
+                    contents = [prompt] + gemini_parts
+                    
+                    response = self.client.models.generate_content(
+                        model=DEFAULT_MODEL,
+                        contents=contents,
+                    )
+                    proposal_content = response.text
+                except Exception as e:
+                    print(f"[-] Gemini API call failed: {e}. Falling back to boilerplate text.")
+                    proposal_content = self._get_fallback_proposal(info_data, prompt)
+            else:
+                print("[!] No GEMINI_API_KEY found. Generating draft proposal using local rules.")
+                proposal_content = self._get_fallback_proposal(info_data, prompt)
 
         # 5. Output file
         self.file_writer.write_proposal(folder_name, proposal_content)

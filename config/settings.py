@@ -20,6 +20,14 @@ if env_path.exists():
                 key, val = line.split("=", 1)
                 os.environ[key.strip()] = val.strip()
 
+# Provider Settings
+# AI_PROVIDER can be "gemini" or "ollama"
+AI_PROVIDER = os.getenv("AI_PROVIDER", "gemini").lower()
+
 # Gemini Settings
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 DEFAULT_MODEL = "gemini-2.0-flash"
+
+# Ollama Settings
+OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:latest")
