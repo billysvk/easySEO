@@ -6,6 +6,9 @@ from src.skills.info_reader import InfoReader
 from src.skills.file_writer import FileWriter
 from src.skills.thumbnail_strategist import ThumbnailStrategist
 from src.skills.subtitle_downloader import SubtitleDownloader
+from src.skills.competitor_analyzer import CompetitorAnalyzer
+from src.skills.shorts_architect import ShortsArchitect
+from src.skills.studio_stats_parser import StudioStatsParser
 
 __all__ = [
     "ImageProcessor",
@@ -14,5 +17,8 @@ __all__ = [
     "InfoReader",
     "FileWriter",
     "ThumbnailStrategist",
-    "SubtitleDownloader"
+    "SubtitleDownloader",
+    "CompetitorAnalyzer",
+    "ShortsArchitect",
+    "StudioStatsParser"
 ]

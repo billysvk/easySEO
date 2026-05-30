@@ -100,6 +100,10 @@ class URLAnalyzer:
             # Check if this is a YouTube URL
             is_youtube = "youtube.com" in url or "youtu.be" in url
 
+            views = "0"
+            publish_date = ""
+            author = ""
+
             if is_youtube:
                 # Attempt to extract full description and title from YouTube's player response JSON
                 match = re.search(r'ytInitialPlayerResponse\s*=\s*({.+?});', response.text)
@@ -113,7 +117,10 @@ class URLAnalyzer:
                         player_data = json.loads(match.group(1))
                         og_desc = player_data.get("videoDetails", {}).get("shortDescription", "")
                         og_title = player_data.get("videoDetails", {}).get("title", "")
-                        print("[+] [Skill: URLAnalyzer] Extracted full description and title from YouTube player response.")
+                        views = player_data.get("videoDetails", {}).get("viewCount", "0")
+                        author = player_data.get("videoDetails", {}).get("author", "")
+                        publish_date = player_data.get("microformat", {}).get("playerMicroformatRenderer", {}).get("publishDate", "")
+                        print(f"[+] [Skill: URLAnalyzer] Extracted full description, title and public stats (Views: {views}) from YouTube player response.")
                     except Exception as json_err:
                         print(f"[*] [Skill: URLAnalyzer] Could not parse ytInitialPlayerResponse JSON: {json_err}")
 
@@ -132,6 +139,9 @@ class URLAnalyzer:
             return {
                 "title": og_title.strip() if og_title else "",
                 "description": og_desc.strip() if og_desc else "",
+                "views": views,
+                "author": author,
+                "publish_date": publish_date,
                 "success": True
             }
         except Exception as e:
@@ -139,6 +149,9 @@ class URLAnalyzer:
             return {
                 "title": "",
                 "description": "",
+                "views": "0",
+                "author": "",
+                "publish_date": "",
                 "success": False,
                 "error": str(e)
             }

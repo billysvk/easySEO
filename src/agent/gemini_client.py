@@ -21,6 +21,9 @@ from src.skills.file_writer import FileWriter
 from src.skills.thumbnail_strategist import ThumbnailStrategist
 from src.skills.prompt_builder import PromptBuilder
 from src.skills.subtitle_downloader import SubtitleDownloader
+from src.skills.competitor_analyzer import CompetitorAnalyzer
+from src.skills.shorts_architect import ShortsArchitect
+from src.skills.studio_stats_parser import StudioStatsParser
 
 
 class EasySEOAgent:
@@ -38,6 +41,9 @@ class EasySEOAgent:
         self.thumbnail_strategist = ThumbnailStrategist()
         self.prompt_builder = PromptBuilder()
         self.subtitle_downloader = SubtitleDownloader()
+        self.competitor_analyzer = CompetitorAnalyzer()
+        self.shorts_architect = ShortsArchitect()
+        self.studio_stats_parser = StudioStatsParser()
 
     async def run(
         self,
@@ -53,11 +59,12 @@ class EasySEOAgent:
         print(f"[*] Starting SEO Agent workflow for folder: '{folder_name}'...")
         print(f"[*] Active AI Provider: '{AI_PROVIDER.upper()}'")
 
-        # 1. Read existing title/description/url from metadata file
+        # 1. Read existing title/description/url/keyword from metadata file
         info_dict = self.info_reader.read_info(folder_name)
         title = info_dict.get("title", "")
         description = info_dict.get("description", "")
         video_url = info_dict.get("url", "")
+        keyword = info_dict.get("keyword", "")
 
         # Automatically download subtitles if missing
         if video_url:
@@ -77,6 +84,9 @@ class EasySEOAgent:
 
 **URL:** {video_url}
 **Title:** {scraped_metadata.get('title')}
+**Author/Channel:** {scraped_metadata.get('author')}
+**Published Date:** {scraped_metadata.get('publish_date')}
+**Live Views:** {scraped_metadata.get('views')}
 
 **Description:**
 {scraped_metadata.get('description')}
@@ -107,6 +117,9 @@ class EasySEOAgent:
             info_parts.append(f"Original Video URL: {video_url}")
             if scraped_metadata and scraped_metadata.get("success"):
                 info_parts.append(f"Live Video Title (Scraped): {scraped_metadata.get('title')}")
+                info_parts.append(f"Live Video Author: {scraped_metadata.get('author')}")
+                info_parts.append(f"Live Video Published Date: {scraped_metadata.get('publish_date')}")
+                info_parts.append(f"Live Video Views: {scraped_metadata.get('views')}")
                 info_parts.append(f"Live Video Description (Scraped):\n{scraped_metadata.get('description')}")
         
         info_text = "\n\n".join(info_parts) if info_parts else "Title Draft: None\nDescription Draft: None"
@@ -124,22 +137,33 @@ class EasySEOAgent:
         else:
             print("[*] Skipping visual image analysis (--no-visual flag active).")
 
-        # 4. Fetch/parse reference URL if provided
-        reference_data = ""
+        # 4. Fetch/parse reference URL if provided and run Competitor Gap Analysis
+        reference_data_parts = []
         if reference_url:
-            reference_data = self.url_analyzer.analyze_url(reference_url)
+            ref_data = self.url_analyzer.analyze_url(reference_url)
+            reference_data_parts.append(ref_data)
+        
+        if keyword:
+            competitor_data = await self.competitor_analyzer.analyze_competitors(keyword)
+            reference_data_parts.append(f"--- COMPETITOR SEARCH & KEYWORD GAP ANALYSIS (Keyword: '{keyword}') ---\n{competitor_data}")
+            
+        reference_data = "\n\n".join(reference_data_parts) if reference_data_parts else ""
 
-        # 5. Load thumbnail visual strategist guides
+        # 5. Load thumbnail visual strategist & shorts architect guides
         thumbnail_guides = self.thumbnail_strategist.get_strategy_placeholder()
+        shorts_guides = self.shorts_architect.get_shorts_guidelines()
+        visual_guides = f"{thumbnail_guides}\n\n{shorts_guides}"
 
         print("[*] Consolidating inputs & constructing payload...")
 
+        csv_diagnostics = self.studio_stats_parser.parse_retention_csv(folder_name)
         visual_summary = (
             f"Attached {len(visual_images)} YouTube Studio analytics screenshots / "
             "retention charts. Analyze them for intro drop-offs, valleys and spikes."
             if visual_images
             else "No visual analytics screenshots provided (text-only analysis)."
         )
+        visual_summary += f"\n\n{csv_diagnostics}"
 
         # Build the expert prompt from .gemini.md (single source of truth).
         system_instruction = self.prompt_builder.get_system_instruction()
@@ -148,7 +172,7 @@ class EasySEOAgent:
             transcript_text=transcript_block,
             visual_data=visual_summary,
             reference_data=reference_data,
-            thumbnail_guides=thumbnail_guides,
+            thumbnail_guides=visual_guides,
         )
 
         proposal_content = ""
