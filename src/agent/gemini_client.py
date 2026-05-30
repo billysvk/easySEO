@@ -105,11 +105,11 @@ Please generate an SEO Proposal containing:
                     payload["images"] = base64_images
                     print(f"[*] Attaching {len(base64_images)} image(s) to local Ollama multimodal request...")
                 
-                # Make HTTP call to local daemon
+                # Make HTTP call to local daemon with 300s timeout for local visual generation
                 response = httpx.post(
                     f"{OLLAMA_URL}/api/generate",
                     json=payload,
-                    timeout=90.0  # Local models can take a moment to compute
+                    timeout=300.0  # Local visual models can take a moment to compute
                 )
                 response.raise_for_status()
                 proposal_content = response.json().get("response", "")
