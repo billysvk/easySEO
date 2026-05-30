@@ -8,35 +8,42 @@ class SRTParser:
 
     def parse_srt(self, folder_name: str) -> str:
         """
-        Parses SRT subtitles from the folder and extracts clean speech text.
+        Parses SRT or SBV subtitles from the folder and extracts clean speech text.
         """
         folder_path = RAW_INPUTS_DIR / folder_name
-        print(f"[*] [Skill: SRTParser] Scanning for subtitle files (*.srt) in: {folder_path}")
+        print(f"[*] [Skill: SRTParser] Scanning for subtitle files (*.srt, *.sbv) in: {folder_path}")
         
         if not folder_path.exists():
             return "No raw inputs folder found for subtitles."
             
-        srt_files = list(folder_path.glob("*.srt"))
-        if not srt_files:
-            return "No subtitle (.srt) files found."
+        # Search for both srt and sbv files
+        sub_files = list(folder_path.glob("*.srt")) + list(folder_path.glob("*.sbv"))
+        if not sub_files:
+            return "No subtitle (.srt, .sbv) files found."
             
-        srt_path = srt_files[0]
-        print(f"[+] [Skill: SRTParser] Parsing subtitle file: {srt_path.name}")
+        sub_path = sub_files[0]
+        print(f"[+] [Skill: SRTParser] Parsing subtitle file: {sub_path.name}")
         
         try:
-            with open(srt_path, "r", encoding="utf-8") as f:
+            with open(sub_path, "r", encoding="utf-8") as f:
                 content = f.read()
             
-            # Simple regex to strip timestamps and line numbers
-            # Match line numbers, timestamps like 00:00:00,000 --> 00:00:00,000, and leave plain text
             clean_lines = []
             for line in content.splitlines():
                 line = line.strip()
                 if not line:
                     continue
+                # Skip numeric lines (SRT index lines)
                 if line.isdigit():
                     continue
+                # Skip SRT timestamps (e.g. 00:00:01,000 --> 00:00:05,000)
                 if "-->" in line:
+                    continue
+                # Skip SBV timestamps (e.g. 0:00:02.630,0:00:04.270)
+                if re.match(r'^\d+:\d{2}:\d{2}\.\d+,', line) or re.match(r'^\d+:\d{2}:\d{2}\.\d+$', line):
+                    continue
+                # Fallback matching for timestamp structures containing commas or dots
+                if re.search(r'\d+:\d{2}:\d{2}', line):
                     continue
                 clean_lines.append(line)
                 
@@ -47,5 +54,4 @@ class SRTParser:
             # Return truncated snippet if too long
             return clean_text[:10000] # Cap transcript text for prompt efficiency
         except Exception as e:
-            return f"Error parsing SRT file: {e}"
-        
+            return f"Error parsing subtitle file ({sub_path.name}): {e}"
