@@ -46,11 +46,14 @@ Ollama) με ένα expert blueprint βασισμένο σε **τεκμηριω�
 
 ```bash
 # Το μόνο που χρειάζεσαι — ένα URL. Στην αρχή εμφανίζεται μενού:
-#   [1] Ollama (τοπικό)  [2] Gemini (cloud)  [3] Dry-run (χωρίς AI)
-# και για Ollama διαλέγεις μοντέλο από τα εγκατεστημένα.
+#   [1] Ollama (τοπικό)  [2] Claude  [3] Gemini  [4] Dry-run (χωρίς AI)
+# Για Ollama διαλέγεις μοντέλο από τα εγκατεστημένα.
+# Το Claude δουλεύει είτε με ANTHROPIC_API_KEY είτε αυτόματα μέσω του
+# Claude Code CLI και της συνδρομής σου (χωρίς κανένα setup).
 uv run python main.py "https://youtu.be/XXXXXXXXXXX"
 
 # Χωρίς μενού (flags):
+uv run python main.py "https://youtu.be/..." --provider claude
 uv run python main.py "https://youtu.be/..." --provider ollama --model qwen3:latest
 uv run python main.py "https://youtu.be/..." --provider gemini --model gemini-2.5-pro
 uv run python main.py "https://youtu.be/..." --dry-run

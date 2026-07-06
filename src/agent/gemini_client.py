@@ -17,6 +17,8 @@ viral optimization package. The agent:
 import asyncio
 import os
 import re
+import shutil
+import subprocess
 import time
 
 import httpx
@@ -26,6 +28,8 @@ from google.genai import types
 from config.settings import (
     DEFAULT_MODEL,
     GEMINI_API_KEY,
+    ANTHROPIC_API_KEY,
+    CLAUDE_MODEL,
     AI_PROVIDER,
     OLLAMA_URL,
     OLLAMA_MODEL,
@@ -242,6 +246,8 @@ class EasySEOAgent:
             ollama_model = model_override or OLLAMA_MODEL
             print(f"[*] Calling local Ollama server at {OLLAMA_URL} using model '{ollama_model}'...")
             proposal_content = self._call_ollama(prompt, system_instruction, visual_images, ollama_model)
+        elif provider == "claude":
+            proposal_content = self._call_claude(prompt, system_instruction, visual_images, model_override)
         else:
             proposal_content = self._call_gemini(prompt, system_instruction, visual_images, model_override)
 
@@ -275,6 +281,94 @@ class EasySEOAgent:
             ),
         )
         return self._strip_reasoning(response.text)
+
+    def _call_claude(self, prompt, system_instruction, visual_images, model_override=None):
+        """Generates the proposal with Claude.
+
+        Path 1 (preferred): the official Anthropic SDK when an API key or an
+        `ant auth login` profile is available — full multimodal support.
+        Path 2 (fallback): the Claude Code CLI (`claude -p`), which reuses the
+        user's existing Claude subscription login — text-only.
+        """
+        if ANTHROPIC_API_KEY or os.environ.get("ANTHROPIC_AUTH_TOKEN"):
+            return self._call_claude_sdk(prompt, system_instruction, visual_images, model_override)
+
+        claude_bin = shutil.which("claude")
+        if claude_bin:
+            return self._call_claude_cli(claude_bin, prompt, system_instruction, model_override)
+
+        # Last attempt: the SDK also resolves `ant auth login` profiles on its own.
+        try:
+            return self._call_claude_sdk(prompt, system_instruction, visual_images, model_override)
+        except Exception as e:
+            raise ValueError(
+                "No Claude access found. Either set ANTHROPIC_API_KEY in .env, "
+                "or install/log in to the Claude Code CLI (`claude`). "
+                f"(SDK error: {e})"
+            )
+
+    def _call_claude_sdk(self, prompt, system_instruction, visual_images, model_override=None):
+        import anthropic
+
+        model = model_override or CLAUDE_MODEL
+        print(f"[*] Calling Claude via Anthropic SDK, model '{model}' (multimodal)...")
+
+        content = [{"type": "text", "text": prompt}]
+        for img in visual_images:
+            content.append(
+                {
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": img.get("mime_type", "image/png"),
+                        "data": img["base64"],
+                    },
+                }
+            )
+
+        client = anthropic.Anthropic()
+        with client.messages.stream(
+            model=model,
+            max_tokens=32000,
+            system=system_instruction,
+            thinking={"type": "adaptive"},
+            messages=[{"role": "user", "content": content}],
+        ) as stream:
+            response = stream.get_final_message()
+
+        if response.stop_reason == "refusal":
+            raise ValueError("Claude declined this request (stop_reason=refusal).")
+        text = "".join(b.text for b in response.content if b.type == "text")
+        return self._strip_reasoning(text)
+
+    def _call_claude_cli(self, claude_bin, prompt, system_instruction, model_override=None):
+        model_note = f" (model: {model_override})" if model_override else " (your default Claude model)"
+        print(f"[*] Calling Claude via the Claude Code CLI using your subscription{model_note}...")
+        print("[*] This generates the full package in one shot — allow a few minutes.")
+
+        full_prompt = (
+            f"{system_instruction}\n\n{prompt}\n\n"
+            "IMPORTANT: Reply ONLY with the completed YOUTUBE VIRAL OPTIMIZATION PACKAGE "
+            "markdown document. No preamble, no questions, no tool use."
+        )
+        cmd = [claude_bin, "-p"]
+        if model_override:
+            cmd += ["--model", model_override]
+
+        result = subprocess.run(
+            cmd,
+            input=full_prompt,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=1800,
+        )
+        if result.returncode != 0 or not (result.stdout or "").strip():
+            raise ValueError(
+                f"Claude CLI failed (exit {result.returncode}): {(result.stderr or '')[:500]}"
+            )
+        return self._strip_reasoning(result.stdout.strip())
 
     def _call_ollama(self, prompt, system_instruction, visual_images, model=None):
         payload = {

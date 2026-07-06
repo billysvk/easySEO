@@ -70,6 +70,17 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 DEFAULT_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
 
 # ---------------------------------------------------------------------------
+# Claude (Anthropic) Settings
+# ---------------------------------------------------------------------------
+# Two auth paths, tried in this order:
+#   1. Anthropic SDK — used when ANTHROPIC_API_KEY (or an `ant auth login`
+#      profile) is available. Full multimodal support.
+#   2. Claude Code CLI (`claude -p`) — uses the user's existing Claude
+#      subscription login. Text-only, zero extra setup.
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+CLAUDE_MODEL = os.getenv("CLAUDE_MODEL", "claude-opus-4-8")
+
+# ---------------------------------------------------------------------------
 # Ollama Settings
 # ---------------------------------------------------------------------------
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")

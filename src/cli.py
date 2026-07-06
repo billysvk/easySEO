@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+import shutil
 import subprocess
 import sys
 import time
@@ -8,7 +9,15 @@ import httpx
 
 # Importing settings hardens stdout/stderr to UTF-8 (errors="replace") at import
 # time, before any non-ASCII log line can crash the run on Windows consoles.
-from config.settings import AI_PROVIDER, GEMINI_API_KEY, OLLAMA_URL, OLLAMA_MODEL, DEFAULT_MODEL
+from config.settings import (
+    AI_PROVIDER,
+    GEMINI_API_KEY,
+    ANTHROPIC_API_KEY,
+    CLAUDE_MODEL,
+    OLLAMA_URL,
+    OLLAMA_MODEL,
+    DEFAULT_MODEL,
+)
 from src.agent.gemini_client import EasySEOAgent
 
 _BANNER = r"""
@@ -78,17 +87,35 @@ def interactive_setup(args) -> tuple:
         return args.provider, args.model, args.dry_run
 
     print("Τι θέλεις να τρέξει;")
-    default_choice = "1" if AI_PROVIDER == "ollama" else "2"
+    default_choice = {"ollama": "1", "claude": "2"}.get(AI_PROVIDER, "3")
+    claude_ready = bool(ANTHROPIC_API_KEY) or bool(shutil.which("claude"))
+    claude_note = (
+        "μέσω API key" if ANTHROPIC_API_KEY
+        else "μέσω Claude Code CLI / συνδρομής σου" if claude_ready
+        else "ΔΕΝ βρέθηκε ούτε ANTHROPIC_API_KEY ούτε claude CLI"
+    )
     gemini_note = "έτοιμο" if GEMINI_API_KEY else "ΛΕΙΠΕΙ το GEMINI_API_KEY στο .env"
     print(f"  [1] Ollama  — τοπικό AI, δωρεάν, χωρίς internet για το LLM")
-    print(f"  [2] Gemini  — cloud AI, καλύτερη ποιότητα ({gemini_note})")
-    print(f"  [3] Dry-run — μόνο συλλογή δεδομένων, χωρίς AI (γράφει το INTELLIGENCE_PROMPT.md)")
+    print(f"  [2] Claude  — κορυφαία ποιότητα ({claude_note})")
+    print(f"  [3] Gemini  — cloud AI ({gemini_note})")
+    print(f"  [4] Dry-run — μόνο συλλογή δεδομένων, χωρίς AI (γράφει το INTELLIGENCE_PROMPT.md)")
     choice = _ask(f"Επιλογή [{default_choice}]: ", default_choice)
 
-    if choice == "3":
+    if choice == "4":
         return None, None, True
 
     if choice == "2":
+        if not claude_ready:
+            print("[!] Δεν βρέθηκε πρόσβαση σε Claude — συνεχίζω, αλλά το LLM call θα αποτύχει.")
+        if ANTHROPIC_API_KEY:
+            model = _ask(f"Μοντέλο Claude [{CLAUDE_MODEL}]: ", CLAUDE_MODEL)
+        else:
+            # CLI path: empty = the user's default Claude Code model.
+            model = _ask("Μοντέλο Claude [Enter = το default μοντέλο σου στο Claude Code]: ", "")
+            model = model or None
+        return "claude", model, False
+
+    if choice == "3":
         if not GEMINI_API_KEY:
             print("[!] Δεν υπάρχει GEMINI_API_KEY στο .env — συνεχίζω, αλλά το LLM call θα αποτύχει.")
         model = _ask(f"Μοντέλο Gemini [{DEFAULT_MODEL}]: ", DEFAULT_MODEL)
@@ -147,7 +174,7 @@ def main():
     parser.add_argument(
         "--provider",
         type=str,
-        choices=["gemini", "ollama"],
+        choices=["gemini", "ollama", "claude"],
         help="AI provider for this run (skips the interactive menu)",
     )
     parser.add_argument(
