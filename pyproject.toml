@@ -1,7 +1,7 @@
 [project]
 name = "easy-seo"
 version = "0.1.0"
-description = "Add your description here"
+description = "easySEO Viral Engine: URL-in, full YouTube viral optimization package out"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -9,5 +9,6 @@ dependencies = [
     "google-genai>=2.7.0",
     "httpx>=0.28.1",
     "pillow>=12.2.0",
+    "youtube-comment-downloader>=0.1.78",
     "youtube-transcript-api>=1.2.4",
 ]

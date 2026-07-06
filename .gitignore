@@ -124,3 +124,6 @@ workspace/outputs/
 # Ignore raw input test assets except the input configuration file
 workspace/raw_inputs/url_scrap_test/*
 !workspace/raw_inputs/url_scrap_test/input.md
+
+# Auto-provisioned per-video workspaces (URL mode)
+workspace/raw_inputs/video_*/

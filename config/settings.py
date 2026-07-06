@@ -58,6 +58,9 @@ AI_PROVIDER = os.getenv("AI_PROVIDER", "gemini").lower()
 # little creativity, so we default slightly above the deterministic baseline.
 LLM_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.7"))
 
+# Country code used for Google Trends "trending now" sweeps (viewer market).
+TREND_GEO = os.getenv("TREND_GEO", "GR")
+
 # ---------------------------------------------------------------------------
 # Gemini Settings
 # ---------------------------------------------------------------------------

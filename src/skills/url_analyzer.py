@@ -3,6 +3,8 @@ import json
 import httpx
 from bs4 import BeautifulSoup
 
+from src.skills.http_common import HEADERS as _HEADERS, CONSENT_COOKIES as _COOKIES
+
 BODY_TEXT_CAP = 4000
 
 
@@ -21,13 +23,7 @@ class URLAnalyzer:
         """
         print(f"[*] [Skill: URLAnalyzer] Fetching external reference URL: {url}")
         try:
-            headers = {
-                "User-Agent": (
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                    "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-                )
-            }
-            response = httpx.get(url, headers=headers, timeout=15.0, follow_redirects=True)
+            response = httpx.get(url, headers=_HEADERS, cookies=_COOKIES, timeout=15.0, follow_redirects=True)
             response.raise_for_status()
 
             soup = BeautifulSoup(response.text, "html.parser")
@@ -84,14 +80,7 @@ class URLAnalyzer:
         """
         print(f"[*] [Skill: URLAnalyzer] Scraping video metadata from URL: {url}")
         try:
-            headers = {
-                "User-Agent": (
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                    "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-                ),
-                "Accept-Language": "el,en-US;q=0.9,en;q=0.8"
-            }
-            response = httpx.get(url, headers=headers, timeout=15.0, follow_redirects=True)
+            response = httpx.get(url, headers=_HEADERS, cookies=_COOKIES, timeout=15.0, follow_redirects=True)
             response.raise_for_status()
 
             og_title = ""
