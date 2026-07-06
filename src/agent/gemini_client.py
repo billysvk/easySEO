@@ -106,10 +106,12 @@ class EasySEOAgent:
         no_visual: bool = False,
         model_override: str = None,
         dry_run: bool = False,
+        provider: str = None,
     ) -> None:
         start_time = time.monotonic()
+        provider = (provider or AI_PROVIDER).lower()
         print(f"[*] Starting Viral Engine workflow for: '{folder_name}'")
-        print(f"[*] Active AI Provider: '{AI_PROVIDER.upper()}'")
+        print(f"[*] Active AI Provider: '{provider.upper()}'")
 
         # 1. Read existing metadata (title/description/url/keyword)
         info_dict = self.info_reader.read_info(folder_name)
@@ -235,9 +237,10 @@ class EasySEOAgent:
             print(f"[+] DRY RUN complete in {elapsed:.1f}s — full intelligence prompt saved (no LLM call).")
             return
 
-        if AI_PROVIDER == "ollama":
-            print(f"[*] Calling local Ollama server at {OLLAMA_URL} using model '{OLLAMA_MODEL}'...")
-            proposal_content = self._call_ollama(prompt, system_instruction, visual_images)
+        if provider == "ollama":
+            ollama_model = model_override or OLLAMA_MODEL
+            print(f"[*] Calling local Ollama server at {OLLAMA_URL} using model '{ollama_model}'...")
+            proposal_content = self._call_ollama(prompt, system_instruction, visual_images, ollama_model)
         else:
             proposal_content = self._call_gemini(prompt, system_instruction, visual_images, model_override)
 
@@ -272,9 +275,9 @@ class EasySEOAgent:
         )
         return self._strip_reasoning(response.text)
 
-    def _call_ollama(self, prompt, system_instruction, visual_images):
+    def _call_ollama(self, prompt, system_instruction, visual_images, model=None):
         payload = {
-            "model": OLLAMA_MODEL,
+            "model": model or OLLAMA_MODEL,
             "prompt": prompt,
             "system": system_instruction,
             "stream": False,

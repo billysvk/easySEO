@@ -45,18 +45,24 @@ Ollama) με ένα expert blueprint βασισμένο σε **τεκμηριω�
 ## Χρήση
 
 ```bash
-# Το μόνο που χρειάζεσαι — ένα URL:
+# Το μόνο που χρειάζεσαι — ένα URL. Στην αρχή εμφανίζεται μενού:
+#   [1] Ollama (τοπικό)  [2] Gemini (cloud)  [3] Dry-run (χωρίς AI)
+# και για Ollama διαλέγεις μοντέλο από τα εγκατεστημένα.
 uv run python main.py "https://youtu.be/XXXXXXXXXXX"
 
-# Συλλογή δεδομένων χωρίς LLM call (δεν χρειάζεται API key):
-uv run python main.py "https://youtu.be/XXXXXXXXXXX" --dry-run
+# Χωρίς μενού (flags):
+uv run python main.py "https://youtu.be/..." --provider ollama --model qwen3:latest
+uv run python main.py "https://youtu.be/..." --provider gemini --model gemini-2.5-pro
+uv run python main.py "https://youtu.be/..." --dry-run
 
 # Legacy: φάκελος με assets (screenshots, CSV, SRT, input.md)
 uv run python main.py --folder my_video_folder
 
-# Με εξωτερικό reference άρθρο & ισχυρότερο μοντέλο:
-uv run python main.py "https://youtu.be/..." --url "https://blog.example.com/article" --model gemini-2.5-pro
+# Με εξωτερικό reference άρθρο:
+uv run python main.py "https://youtu.be/..." --url "https://blog.example.com/article"
 ```
+
+Αν το Ollama δεν τρέχει, το CLI προσπαθεί να το ξεκινήσει μόνο του.
 
 Για URL mode δημιουργείται αυτόματα φάκελος `workspace/raw_inputs/video_<id>/`.
 Αν θες να προσθέσεις retention screenshots ή Studio CSV, ρίξ' τα σε αυτόν τον
