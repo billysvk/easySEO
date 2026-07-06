@@ -30,6 +30,7 @@ from config.settings import (
     OLLAMA_URL,
     OLLAMA_MODEL,
     OLLAMA_NUM_CTX,
+    OLLAMA_TIMEOUT,
     LLM_TEMPERATURE,
     RAW_INPUTS_DIR,
     TREND_GEO,
@@ -301,7 +302,7 @@ class EasySEOAgent:
         response = httpx.post(
             f"{OLLAMA_URL}/api/generate",
             json=payload,
-            timeout=600.0,  # Local inference of long prompts can be slow.
+            timeout=OLLAMA_TIMEOUT,  # CPU inference of long prompts is slow.
         )
         response.raise_for_status()
         return self._strip_reasoning(response.json().get("response", ""))

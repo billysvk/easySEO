@@ -78,3 +78,6 @@ OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:latest")
 # instruction + transcript + timeline the prompt easily overflows that, and the
 # model silently never sees the tail of the input. Set this explicitly.
 OLLAMA_NUM_CTX = int(os.getenv("OLLAMA_NUM_CTX", "16384"))
+# CPU-only inference of a ~16k-token expert prompt can exceed 10 minutes;
+# give local models generous room before giving up.
+OLLAMA_TIMEOUT = float(os.getenv("OLLAMA_TIMEOUT", "1800"))
