@@ -64,15 +64,9 @@ class SubtitleDownloader:
 
         # Method 2: Scrape and parse ytInitialPlayerResponse captions track
         try:
-            headers = {
-                "User-Agent": (
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                    "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-                ),
-                "Accept-Language": "el,en-US;q=0.9,en;q=0.8"
-            }
-            async with httpx.AsyncClient() as client:
-                response = await client.get(video_url, headers=headers, timeout=15.0, follow_redirects=True)
+            from src.skills.http_common import HEADERS, CONSENT_COOKIES
+            async with httpx.AsyncClient(cookies=CONSENT_COOKIES) as client:
+                response = await client.get(video_url, headers=HEADERS, timeout=15.0, follow_redirects=True)
                 response.raise_for_status()
 
             # Find ytInitialPlayerResponse

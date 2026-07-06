@@ -1,130 +1,104 @@
-# easySEO 🚀
+# easySEO Viral Engine v2.0
 
-`easySEO` is a next-generation, production-grade **multimodal AI YouTube SEO Consultant & Retention Architect** built in Python. Designed to run seamlessly as a lightweight CLI tool, it processes raw video assets—such as spoken SRT transcripts, current metadata drafts, YouTube Studio analytics screenshots, retention charts, and reference competitor URLs—to generate high-conversion, algorithm-optimized YouTube packaging proposals for 2026 standards.
+**Δίνεις ένα YouTube URL → παίρνεις ολόκληρο viral optimization πακέτο.**
 
----
+Ένα Python CLI που δουλεύει σαν ολόκληρη ομάδα από YouTube strategists: μαζεύει
+ΟΛΗ τη διαθέσιμη δημόσια πληροφορία γύρω από το βίντεο (χωρίς κανένα YouTube API
+key) και τη συνθέτει σε ένα πλήρες, έτοιμο-για-χρήση πακέτο βελτιστοποίησης.
 
-## 📂 Project Architecture
+## Τι κάνει σε ένα run (~5 δευτερόλεπτα συλλογή δεδομένων)
 
-The codebase strictly follows a highly modular, decoupled architecture, separating orchestration logic from individual functional skills:
+| Skill | Τι μαζεύει |
+|---|---|
+| **SubtitleDownloader** | Υπότιτλους/απομαγνητοφώνηση του βίντεο (el/en) |
+| **URLAnalyzer** | Live τίτλο, περιγραφή, views, κρυφά tags του βίντεο |
+| **ChannelAnalyzer** | Baseline καναλιού: median views, overperformers/underperformers, τι κλικάρει ΤΟ ΔΙΚΟ ΣΟΥ κοινό |
+| **CompetitorAnalyzer** | Live YouTube SERP: top 8 βίντεο που κερδίζουν το keyword, με views/ηλικία/διάρκεια + κρυφά tags των top 5 + auto-computed "packaging intelligence" |
+| **TrendHunter** | Πραγματικά queries από YouTube & Google autocomplete + Google Trends "trending now" (GR) — όχι εφευρημένα "keyword scores" |
+| **CommentMiner** | Top σχόλια: τι συγκίνησε, τι ερωτήσεις έμειναν αναπάντητες, το λεξιλόγιο του κοινού |
+| **SEOAuditor** | Ντετερμινιστικό σκορ 0-100 του τρέχοντος packaging με συγκεκριμένα FAIL points |
+| **ImageProcessor / StudioStatsParser** | Retention screenshots & CSV από το Studio (προαιρετικά) |
 
-```text
-easy_seo/
-│
-├── .venv/                      # Managed via 'uv'
-├── pyproject.toml              # Dependencies & Python configuration
-├── uv.lock                     # Strict lockfile
-├── README.md                   # Complete documentation
-├── .gemini.md                  # System prompts & SEO proposal blueprints
-│
-├── config/
-│   └── settings.py             # Configuration for paths and Gemini API models
-│
-├── src/
-│   ├── __init__.py
-│   ├── cli.py                  # CLI argument parser and entry point
-│   │
-│   ├── agent/
-│   │   ├── __init__.py
-│   │   └── gemini_client.py    # Main Orchestrator compiling multimodal inputs
-│   │
-│   └── skills/                 # Isolated single-purpose capabilities (Tools)
-│       ├── __init__.py
-│       ├── image_processor.py  # Loads screenshots and converts them to API Multimodal Parts
-│       ├── srt_parser.py       # Cleans SRT subtitle headers for speech transcript extraction
-│       ├── url_analyzer.py     # Scrapes external articles or competitor content using HTTPX/BS4
-│       ├── info_reader.py      # Ingests current titles/descriptions from info.txt
-│       ├── file_writer.py      # Formats and saves the final SEO_PROPOSAL.md
-│       ├── thumbnail_strategist.py # Generates overlay layout strategies and detailed AI generator prompts
-│       └── prompt_builder.py   # Loads the expert persona + output blueprint from .gemini.md
-│
-└── workspace/
-    ├── raw_inputs/             # Folder for placing raw video assets (directories per video)
-    └── outputs/                # Formatted markdown output target folder
+Όλα τρέχουν **παράλληλα** (asyncio) και τροφοδοτούν το LLM (Gemini ή τοπικό
+Ollama) με ένα expert blueprint βασισμένο σε **τεκμηριωμένη** γνώση του
+αλγορίθμου 2026 (όχι folklore — π.χ. το "first-hour velocity" είναι επίσημα
+μύθος, το Test & Compare κρίνεται από watch-time όχι CTR, τα tags είναι
+σχεδόν νεκρά, το auto-dubbing δίνει >25% επιπλέον watch time).
+
+## Τι παράγει
+
+`workspace/outputs/<video>_SEO_PROPOSAL.md` με 12 ενότητες:
+
+1. **Executive Strategy Brief** — διάγνωση με βάση τα δεδομένα
+2. **Τίτλοι GR** — 3 ψυχολογικές γωνίες + A/B σχέδιο
+3. **Τίτλοι EN** — 3 ψυχολογικές γωνίες
+4. **Έτοιμη περιγραφή GR** — πλήρες κείμενο, όχι outline (hook, chapters, hashtags, music credits)
+5. **Έτοιμη περιγραφή EN**
+6. **Retention & Visual strategy**
+7. **Thumbnail blueprint** — A/B set με prompts για Midjourney/DALL-E + Nano Banana mascot
+8. **Tags & hashtags** — από πραγματικά autocomplete queries και tags των SERP winners
+9. **Viral Shorts planner** — 3 κάθετα βίντεο από τα peaks του transcript
+10. **Launch & Distribution Protocol** — community post, pinned comment, end screens, playlists, πολυγλωσσία, Hype CTA, checklist πρώτου 24ώρου
+11. **Dead Video Revival Protocol** — τεκμηριωμένο playbook αναβίωσης + sequel/halo idea
+12. **COPY-PASTE UPLOAD PACK** — τελικός τίτλος, περιγραφή, tags, pinned comment, community post → γράφεται και σε ξεχωριστό αρχείο `<video>_UPLOAD_PACK.md`
+
+## Χρήση
+
+```bash
+# Το μόνο που χρειάζεσαι — ένα URL. Στην αρχή εμφανίζεται μενού:
+#   [1] Ollama (τοπικό)  [2] Claude  [3] Gemini  [4] Dry-run (χωρίς AI)
+# Για Ollama διαλέγεις μοντέλο από τα εγκατεστημένα.
+# Το Claude δουλεύει είτε με ANTHROPIC_API_KEY είτε αυτόματα μέσω του
+# Claude Code CLI και της συνδρομής σου (χωρίς κανένα setup).
+uv run python main.py "https://youtu.be/XXXXXXXXXXX"
+
+# Χωρίς μενού (flags):
+uv run python main.py "https://youtu.be/..." --provider claude
+uv run python main.py "https://youtu.be/..." --provider ollama --model qwen3:latest
+uv run python main.py "https://youtu.be/..." --provider gemini --model gemini-2.5-pro
+uv run python main.py "https://youtu.be/..." --dry-run
+
+# Legacy: φάκελος με assets (screenshots, CSV, SRT, input.md)
+uv run python main.py --folder my_video_folder
+
+# Με εξωτερικό reference άρθρο:
+uv run python main.py "https://youtu.be/..." --url "https://blog.example.com/article"
 ```
 
----
+Αν το Ollama δεν τρέχει, το CLI προσπαθεί να το ξεκινήσει μόνο του.
 
-## ⚡ Core Skills & Capabilities
+Για URL mode δημιουργείται αυτόματα φάκελος `workspace/raw_inputs/video_<id>/`.
+Αν θες να προσθέσεις retention screenshots ή Studio CSV, ρίξ' τα σε αυτόν τον
+φάκελο και ξανατρέξε.
 
-### 1. Multimodal Stat Analysis (`ImageProcessor`)
-Unlike traditional text-only tools, `easySEO` reads actual binary image assets (screenshots of **YouTube Studio Analytics** and **Audience Retention Curves**). It loads these files and automatically maps them to **Gemini API Multimodal Parts**, allowing the AI to physically analyze spikes, flatlines, or sudden intro drop-offs.
+## Ρύθμιση
 
-### 2. Video Transcript Understanding (`SRTParser`)
-It ingests standard `.srt` / `.sbv` subtitle files and produces **two** views: a sanitized clean-speech stream for keyword/semantic alignment, **and** a downsampled `[MM:SS]` timeline. The timeline lets the AI author *accurate, real* chapter timestamps instead of guessing — a key requirement of the system blueprint.
-
-### 3. URL Competitor Scraping (`URLAnalyzer`)
-Accepts an optional URL argument. It leverages `httpx` and `beautifulsoup4` to extract competitor **title, meta description, Open Graph tags (`og:title`/`og:description`), keywords and H1/H2 headings** — not just raw paragraphs. This surfaces a competitor's actual packaging even on JS-heavy pages like YouTube watch URLs.
-
-### 4. Creative Visual Director (`ThumbnailStrategist`)
-Instead of wasting compute attempting to render inaccurate images, this skill acts as a Creative Director. It defines the optimal layout composition (Rule of Thirds, focus subjects, color contrast) and provides **2 ready-to-use Midjourney/DALL-E prompts** to render high-CTR background images, complete with exact copy overlay recommendations.
-
----
-
-## ⚙️ Installation & Environment Setup
-
-This project uses [uv](https://github.com/astral-sh/uv), an extremely fast Python package installer and resolver.
-
-### 1. Clone the Repository
 ```bash
-git clone https://github.com/billysvk/easySEO.git
-cd easySEO/easy_seo
-```
-
-### 2. Sync the Environment
-Run the following command to automatically create a virtual environment and install all locked dependencies (`google-genai`, `pillow`, `httpx`, `beautifulsoup4`):
-```bash
+cp .env.example .env   # και συμπλήρωσε το GEMINI_API_KEY
 uv sync
 ```
 
-### 3. Configure the Provider
-Copy `.env.example` to `.env` and fill in your settings. easySEO supports two
-backends:
+`.env` επιλογές: `AI_PROVIDER` (gemini/ollama), `GEMINI_API_KEY`, `GEMINI_MODEL`,
+`OLLAMA_URL/OLLAMA_MODEL/OLLAMA_NUM_CTX`, `LLM_TEMPERATURE`, `TREND_GEO` (default GR).
 
-**Option A — Gemini (remote, recommended for quality & vision):**
-```env
-AI_PROVIDER=gemini
-GEMINI_API_KEY=your-api-key-here
-GEMINI_MODEL=gemini-2.0-flash   # or gemini-2.5-pro for expert-grade output
-LLM_TEMPERATURE=0.7
+## Αρχιτεκτονική
+
+```text
+easy_seo/
+├── main.py                     # Entry point (URL-first CLI)
+├── .gemini.md                  # Το "μυαλό": system instructions + output blueprint
+├── config/settings.py          # Ρυθμίσεις & .env loading
+├── src/
+│   ├── cli.py                  # CLI arguments & banner
+│   ├── agent/gemini_client.py  # Orchestrator: 4 φάσεις, όλα παράλληλα
+│   └── skills/                 # Αυτόνομα skills (ένα αρχείο = μία ικανότητα)
+│       ├── subtitle_downloader.py, srt_parser.py
+│       ├── url_analyzer.py, channel_analyzer.py, competitor_analyzer.py
+│       ├── trend_hunter.py, comment_miner.py, seo_auditor.py
+│       ├── image_processor.py, studio_stats_parser.py
+│       ├── prompt_builder.py, file_writer.py
+│       └── thumbnail_strategist.py, shorts_architect.py
+└── workspace/
+    ├── raw_inputs/<video>/     # Αυτόματα προμηθευμένα assets ανά βίντεο
+    └── outputs/                # SEO_PROPOSAL, UPLOAD_PACK, INTELLIGENCE_PROMPT
 ```
-
-**Option B — Ollama (fully local, no API key):**
-```env
-AI_PROVIDER=ollama
-OLLAMA_MODEL=llama3.2:latest    # use a vision model (e.g. llava) for screenshots
-OLLAMA_NUM_CTX=16384            # raise for long transcripts so the prompt isn't truncated
-```
-
-> The expert SEO persona and the exact output structure live in **`.gemini.md`**
-> — edit that single file to tune the consultant's behavior for both providers.
-
----
-
-## 🚀 How to Run the Tool
-
-### 1. Prepare Video Assets
-Create a folder inside `workspace/raw_inputs/` (e.g., `my_vlog/`) and place the files:
-- **`info.txt`**: Contains your tentative title and draft description.
-- **`subtitles.srt`**: The raw SRT subtitle file of your video speech.
-- **`stats_chart.png`** (Optional): A screenshot of your retention curve or YouTube Studio stats.
-
-### 2. Execute CLI
-Run the execution command:
-```bash
-# Basic run
-uv run python -m src.cli --folder my_vlog
-
-# Run with an external reference URL for competitor mapping
-uv run python -m src.cli --folder my_vlog --url "https://competitor-article.com/video-topic"
-
-# Override the Gemini model for a single run (expert mode)
-uv run python -m src.cli --folder my_vlog --model gemini-2.5-pro
-
-# Text-only run (skip screenshot/multimodal analysis)
-uv run python -m src.cli --folder my_vlog --no-visual
-```
-
-### 3. Retrieve Proposal
-The optimized package will be written directly inside:
-`workspace/outputs/my_vlog_SEO_PROPOSAL.md`

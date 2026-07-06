@@ -42,6 +42,10 @@ _PLACEHOLDERS = (
     "visual_data",
     "reference_data",
     "thumbnail_guides",
+    "trend_data",
+    "audit_report",
+    "channel_data",
+    "comments_data",
 )
 
 
@@ -100,6 +104,10 @@ class PromptBuilder:
         visual_data: str,
         reference_data: str,
         thumbnail_guides: str,
+        trend_data: str = "",
+        audit_report: str = "",
+        channel_data: str = "",
+        comments_data: str = "",
     ) -> str:
         """Fills the template with the gathered inputs.
 
@@ -113,6 +121,10 @@ class PromptBuilder:
             "visual_data": visual_data or "No visual data provided.",
             "reference_data": reference_data or "No external reference provided.",
             "thumbnail_guides": thumbnail_guides or "",
+            "trend_data": trend_data or "No live trend data available.",
+            "audit_report": audit_report or "No packaging audit available.",
+            "channel_data": channel_data or "No channel baseline available.",
+            "comments_data": comments_data or "No comment data available.",
         }
         for key in _PLACEHOLDERS:
             template = template.replace("{" + key + "}", values[key])

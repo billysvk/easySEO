@@ -58,6 +58,9 @@ AI_PROVIDER = os.getenv("AI_PROVIDER", "gemini").lower()
 # little creativity, so we default slightly above the deterministic baseline.
 LLM_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.7"))
 
+# Country code used for Google Trends "trending now" sweeps (viewer market).
+TREND_GEO = os.getenv("TREND_GEO", "GR")
+
 # ---------------------------------------------------------------------------
 # Gemini Settings
 # ---------------------------------------------------------------------------
@@ -65,6 +68,17 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 # Overridable so users can upgrade to a stronger model (e.g. gemini-2.5-pro)
 # without touching code. Default kept on the fast/cheap tier.
 DEFAULT_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+
+# ---------------------------------------------------------------------------
+# Claude (Anthropic) Settings
+# ---------------------------------------------------------------------------
+# Two auth paths, tried in this order:
+#   1. Anthropic SDK — used when ANTHROPIC_API_KEY (or an `ant auth login`
+#      profile) is available. Full multimodal support.
+#   2. Claude Code CLI (`claude -p`) — uses the user's existing Claude
+#      subscription login. Text-only, zero extra setup.
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+CLAUDE_MODEL = os.getenv("CLAUDE_MODEL", "claude-opus-4-8")
 
 # ---------------------------------------------------------------------------
 # Ollama Settings
@@ -75,3 +89,6 @@ OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:latest")
 # instruction + transcript + timeline the prompt easily overflows that, and the
 # model silently never sees the tail of the input. Set this explicitly.
 OLLAMA_NUM_CTX = int(os.getenv("OLLAMA_NUM_CTX", "16384"))
+# CPU-only inference of a ~16k-token expert prompt can exceed 10 minutes;
+# give local models generous room before giving up.
+OLLAMA_TIMEOUT = float(os.getenv("OLLAMA_TIMEOUT", "1800"))
